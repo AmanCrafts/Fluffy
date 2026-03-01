@@ -1,0 +1,46 @@
+{
+  "name": "fluffy",
+  "version": "2.0.0",
+  "description": "A powerful CLI tool with 12+ commands and API integrations built with TypeScript and OOP",
+  "main": "dist/fluffy.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "ts-node fluffy.ts",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "prepare": "npm run build"
+  },
+  "keywords": [
+    "cli",
+    "typescript",
+    "oop",
+    "command-line",
+    "api",
+    "weather",
+    "github",
+    "pokemon"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "type": "module",
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "commander": "^14.0.3"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^25.3.1",
+    "eslint": "^10.0.2",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.5",
+    "nodemon": "^3.1.14",
+    "prettier": "^3.8.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.56.1"
+  },
+  "bin": {
+    "fluffy": "./dist/fluffy.js"
+  }
+}
