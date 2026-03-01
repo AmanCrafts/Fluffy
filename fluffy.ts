@@ -8,8 +8,8 @@ import * as path from 'path';
 // BASE COMMAND CLASS (OOP Pattern)
 // ============================================================
 abstract class BaseCommand {
-    protected name: string;
-    protected description: string;
+    public readonly name: string;
+    public readonly description: string;
 
     constructor(name: string, description: string) {
         this.name = name;
