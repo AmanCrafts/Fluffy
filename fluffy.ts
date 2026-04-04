@@ -1,3 +1,108 @@
+// 16. Translate Command (LibreTranslate API)
+class TranslateCommand extends BaseCommand {
+    private apiService: ApiService;
+    constructor() {
+        super('translate', 'Translate text between languages (LibreTranslate)');
+        this.apiService = new ApiService();
+    }
+
+    async execute(text: string, from: string, to: string): Promise<void> {
+        if (!text || !from || !to) {
+            this.logError('Usage: translate <text> <from> <to>');
+            return;
+        }
+        try {
+            this.logInfo(`Translating from ${from} to ${to}...`);
+            const url = 'https://libretranslate.de/translate';
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ q: text, source: from, target: to, format: 'text' })
+            });
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            const data = await response.json();
+            if (!data.translatedText) {
+                this.logError('Translation failed.');
+                return;
+            }
+            this.logSuccess(`Translation: ${data.translatedText}`);
+        } catch (error) {
+            this.logError(`Failed to translate: ${error}`);
+        }
+    }
+}
+// 15. Todo List Command (local, simple)
+class TodoCommand extends BaseCommand {
+    private static readonly FILE = '.fluffy-todo.json';
+    constructor() {
+        super('todo', 'Manage a simple local todo list');
+    }
+
+    execute(action: string, ...args: string[]): void {
+        switch (action) {
+            case 'add':
+                this.add(args.join(' '));
+                break;
+            case 'list':
+                this.list();
+                break;
+            case 'remove':
+                this.remove(args[0]);
+                break;
+            default:
+                this.logError('Unknown todo action. Use add, list, or remove.');
+        }
+    }
+
+    private getTodos(): string[] {
+        if (!fs.existsSync(TodoCommand.FILE)) return [];
+        try {
+            return JSON.parse(fs.readFileSync(TodoCommand.FILE, 'utf8'));
+        } catch {
+            return [];
+        }
+    }
+
+    private saveTodos(todos: string[]): void {
+        fs.writeFileSync(TodoCommand.FILE, JSON.stringify(todos, null, 2));
+    }
+
+    private add(task: string): void {
+        if (!task.trim()) {
+            this.logError('Cannot add an empty task.');
+            return;
+        }
+        const todos = this.getTodos();
+        todos.push(task);
+        this.saveTodos(todos);
+        this.logSuccess(`Added todo: ${task}`);
+    }
+
+    private list(): void {
+        const todos = this.getTodos();
+        if (todos.length === 0) {
+            this.logInfo('No todos found.');
+            return;
+        }
+        console.log(chalk.cyan('\n📝 Todo List:'));
+        todos.forEach((t, i) => {
+            console.log(chalk.green(`${i + 1}. ${t}`));
+        });
+    }
+
+    private remove(indexStr: string): void {
+        const index = parseInt(indexStr, 10) - 1;
+        const todos = this.getTodos();
+        if (isNaN(index) || index < 0 || index >= todos.length) {
+            this.logError('Invalid todo number.');
+            return;
+        }
+        const removed = todos.splice(index, 1);
+        this.saveTodos(todos);
+        this.logSuccess(`Removed todo: ${removed[0]}`);
+    }
+}
+
 
 #!/usr/bin / env node
 import { Command } from 'commander';
@@ -450,113 +555,159 @@ class TimeCommand extends BaseCommand {
     }
 }
 
+// 14. Currency Converter Command
+class CurrencyCommand extends BaseCommand {
+    private apiService: ApiService;
+    constructor() {
+        super('currency', 'Convert between currencies (uses exchangerate.host)');
+        this.apiService = new ApiService();
+    }
+
+    async execute(amount: string, from: string, to: string): Promise<void> {
+        if (!Validator.isValidNumber(amount)) {
+            this.logError('Invalid amount provided');
+            return;
+        }
+        const amt = parseFloat(amount);
+        try {
+            this.logInfo(`Converting ${amt} ${from.toUpperCase()} to ${to.toUpperCase()}...`);
+            const url = `https://api.exchangerate.host/convert?from=${from}&to=${to}&amount=${amt}`;
+            const data = await this.apiService.fetchData(url);
+            if (data.result === undefined) {
+                this.logError('Conversion failed. Please check currency codes.');
+                return;
+            }
+            this.logSuccess(`${amt} ${from.toUpperCase()} = ${data.result} ${to.toUpperCase()}`);
+        } catch (error) {
+            this.logError(`Failed to convert currency: ${error}`);
+        }
+    }
+}
+
 // ============================================================
 // CLI APPLICATION CLASS (Main OOP Container)
 // ============================================================
 class CLIApplication {
+    const translateCmd = new TranslateCommand();
+            this.program
+    .command('translate <text> <from> <to>')
+    .description(translateCmd.description + ' (e.g. "hello" en es)')
+    .action(async (text, from, to) => await translateCmd.execute(text, from, to));
+const todoCmd = new TodoCommand();
+this.program
+    .command('todo <action> [args...]')
+    .description(todoCmd.description + ' (actions: add, list, remove)')
+    .action((action, args) => todoCmd.execute(action, ...(args || [])));
     private program: Command;
     private commands: Map<string, BaseCommand>;
 
-    constructor() {
-        this.program = new Command();
-        this.commands = new Map();
-        this.initialize();
-    }
+constructor() {
+    this.program = new Command();
+    this.commands = new Map();
+    this.initialize();
+}
 
     private initialize(): void {
-        this.program
-            .name('fluffy')
-            .description(chalk.cyan(' Fluffy CLI - A powerful command-line tool'))
-            .version('2.0.0');
+    this.program
+        .name('fluffy')
+        .description(chalk.cyan(' Fluffy CLI - A powerful command-line tool'))
+        .version('2.0.0');
 
-        this.registerCommands();
-    }
+    this.registerCommands();
+}
 
     private registerCommands(): void {
-        // Register all commands
-        const greetCmd = new GreetCommand();
-        this.program
-            .command('greet <name>')
-            .description(greetCmd.description)
-            .option('-f, --formal', 'Use formal greeting')
-            .action((name, options) => greetCmd.execute(name, options));
+    // Register all commands
+    const greetCmd = new GreetCommand();
+    this.program
+        .command('greet <name>')
+        .description(greetCmd.description)
+        .option('-f, --formal', 'Use formal greeting')
+        .action((name, options) => greetCmd.execute(name, options));
 
-        const fileInfoCmd = new FileInfoCommand();
-        this.program
-            .command('fileinfo <filename>')
-            .description(fileInfoCmd.description)
-            .action((filename) => fileInfoCmd.execute(filename));
+    const fileInfoCmd = new FileInfoCommand();
+    this.program
+        .command('fileinfo <filename>')
+        .description(fileInfoCmd.description)
+        .action((filename) => fileInfoCmd.execute(filename));
 
-        const timeCmd = new TimeCommand();
-        this.program
-            .command('time [format]')
-            .description(timeCmd.description + ' (format: local, iso, utc)')
-            .action((format) => timeCmd.execute(format));
+    const timeCmd = new TimeCommand();
+    this.program
+        .command('time [format]')
+        .description(timeCmd.description + ' (format: local, iso, utc)')
+        .action((format) => timeCmd.execute(format));
 
-        const githubCmd = new GitHubUserCommand();
-        this.program
-            .command('github-user <username>')
-            .description(githubCmd.description)
-            .action(async (username) => await githubCmd.execute(username));
+    const githubCmd = new GitHubUserCommand();
+    this.program
+        .command('github-user <username>')
+        .description(githubCmd.description)
+        .action(async (username) => await githubCmd.execute(username));
 
-        const weatherCmd = new WeatherCommand();
-        this.program
-            .command('weather <city>')
-            .description(weatherCmd.description)
-            .action(async (city) => await weatherCmd.execute(city));
+    const weatherCmd = new WeatherCommand();
+    this.program
+        .command('weather <city>')
+        .description(weatherCmd.description)
+        .action(async (city) => await weatherCmd.execute(city));
 
-        const quoteCmd = new QuoteCommand();
-        this.program
-            .command('quote')
-            .description(quoteCmd.description)
-            .action(async () => await quoteCmd.execute());
+    const quoteCmd = new QuoteCommand();
+    this.program
+        .command('quote')
+        .description(quoteCmd.description)
+        .action(async () => await quoteCmd.execute());
 
-        const pokemonCmd = new PokemonCommand();
-        this.program
-            .command('pokemon <name>')
-            .description(pokemonCmd.description)
-            .action(async (name) => await pokemonCmd.execute(name));
+    const pokemonCmd = new PokemonCommand();
+    this.program
+        .command('pokemon <name>')
+        .description(pokemonCmd.description)
+        .action(async (name) => await pokemonCmd.execute(name));
 
-        const jokeCmd = new JokeCommand();
-        this.program
-            .command('joke')
-            .description(jokeCmd.description)
-            .action(async () => await jokeCmd.execute());
+    const jokeCmd = new JokeCommand();
+    this.program
+        .command('joke')
+        .description(jokeCmd.description)
+        .action(async () => await jokeCmd.execute());
 
-        const mathCmd = new MathCommand();
-        this.program
-            .command('math <operation> <num1> <num2>')
-            .description(`${mathCmd.description} (add, subtract, multiply, divide, power, mod)`)
-            .action((operation, num1, num2) => mathCmd.execute(operation, num1, num2));
+    const mathCmd = new MathCommand();
+    this.program
+        .command('math <operation> <num1> <num2>')
+        .description(`${mathCmd.description} (add, subtract, multiply, divide, power, mod)`)
+        .action((operation, num1, num2) => mathCmd.execute(operation, num1, num2));
 
-        const randomCmd = new RandomCommand();
-        this.program
-            .command('random <min> <max>')
-            .description(randomCmd.description)
-            .action((min, max) => randomCmd.execute(min, max));
+    const randomCmd = new RandomCommand();
+    this.program
+        .command('random <min> <max>')
+        .description(randomCmd.description)
+        .action((min, max) => randomCmd.execute(min, max));
 
-        const listCmd = new ListFilesCommand();
-        this.program
-            .command('list [directory]')
-            .description(listCmd.description)
-            .action((directory) => listCmd.execute(directory));
+    const listCmd = new ListFilesCommand();
+    this.program
+        .command('list [directory]')
+        .description(listCmd.description)
+        .action((directory) => listCmd.execute(directory));
 
-        const dogFactCmd = new DogFactCommand();
-        this.program
-            .command('dogfact')
-            .description(dogFactCmd.description)
-            .action(async () => await dogFactCmd.execute());
+    const dogFactCmd = new DogFactCommand();
+    this.program
+        .command('dogfact')
+        .description(dogFactCmd.description)
+        .action(async () => await dogFactCmd.execute());
 
-        const emailValidatorCmd = new EmailValidatorCommand();
-        this.program
-            .command('validate-email <email>')
-            .description(emailValidatorCmd.description)
-            .action((email) => emailValidatorCmd.execute(email));
-    }
+    const emailValidatorCmd = new EmailValidatorCommand();
+    this.program
+        .command('validate-email <email>')
+        .description(emailValidatorCmd.description)
+        .action((email) => emailValidatorCmd.execute(email));
+
+    const currencyCmd = new CurrencyCommand();
+    this.program
+        .command('currency <amount> <from> <to>')
+        .description(currencyCmd.description + ' (e.g. 100 USD INR)')
+        .action(async (amount, from, to) => await currencyCmd.execute(amount, from, to));
+}
 
     public run(): void {
-        this.program.parse();
-    }
+    this.program.parse();
+}
+    
 }
 
 // ============================================================
