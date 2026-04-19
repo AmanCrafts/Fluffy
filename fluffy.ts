@@ -1,4 +1,5 @@
-#!/usr/bin/env node
+
+#!/usr/bin / env node
 import { Command } from 'commander';
 import chalk from 'chalk';
 import * as fs from 'fs';
@@ -424,6 +425,31 @@ class EmailValidatorCommand extends BaseCommand {
     }
 }
 
+// 13. Time Command
+class TimeCommand extends BaseCommand {
+    constructor() {
+        super('time', 'Display the current date and time');
+    }
+
+    execute(format: string = 'local'): void {
+        const now = new Date();
+        let output: string;
+        switch (format) {
+            case 'iso':
+                output = now.toISOString();
+                break;
+            case 'utc':
+                output = now.toUTCString();
+                break;
+            case 'local':
+            default:
+                output = now.toLocaleString();
+                break;
+        }
+        this.logSuccess(`Current time (${format}): ${output}`);
+    }
+}
+
 // ============================================================
 // CLI APPLICATION CLASS (Main OOP Container)
 // ============================================================
@@ -460,6 +486,12 @@ class CLIApplication {
             .command('fileinfo <filename>')
             .description(fileInfoCmd.description)
             .action((filename) => fileInfoCmd.execute(filename));
+
+        const timeCmd = new TimeCommand();
+        this.program
+            .command('time [format]')
+            .description(timeCmd.description + ' (format: local, iso, utc)')
+            .action((format) => timeCmd.execute(format));
 
         const githubCmd = new GitHubUserCommand();
         this.program
